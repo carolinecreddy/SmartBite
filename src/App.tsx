@@ -389,12 +389,14 @@ export default function App() {
                       </button>
                     )}
                     {/* Combine option */}
-                    <button
-                      onClick={handleGenerateMeals}
-                      className="flex-1 sm:flex-none bg-amber-400 text-slate-900 font-black text-xs px-4 py-2 rounded-xl border-2 border-slate-900 hover:bg-amber-350 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none transition-all"
-                    >
-                      Generate 3 Meal Ideas ⚡
-                    </button>
+                    {ingredients.length > 0 && (
+                      <button
+                        onClick={handleGenerateMeals}
+                        className="flex-1 sm:flex-none bg-amber-400 text-slate-900 font-black text-xs px-4 py-2 rounded-xl border-2 border-slate-900 hover:bg-amber-350 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none transition-all"
+                      >
+                        Generate 3 Meal Ideas ⚡
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -407,7 +409,7 @@ export default function App() {
           <div className="rounded-3xl border-4 border-slate-900 overflow-hidden" id="screen-camera-fridge">
             <CameraView 
               title="Camera Workspace: Ingredients"
-              guidanceText="Frame your open fridge drawer, countertops, or dynamic pantry stock."
+              guidanceText="Frame your fridge, pantry, countertop, or ingredients in good lighting."
               onCapture={handleFridgeCapture}
               onCancel={() => setActiveScreen("home")}
             />
@@ -419,7 +421,7 @@ export default function App() {
           <div className="rounded-3xl border-4 border-slate-900 overflow-hidden" id="screen-camera-label">
             <CameraView 
               title="Camera Workspace: Label Scanner"
-              guidanceText="Center the Nutrition Facts label grid or raw back chemical additives clearly."
+              guidanceText="Center the Nutrition Facts label or ingredient list clearly in the photo."
               onCapture={handleLabelCapture}
               onCancel={() => setActiveScreen("home")}
             />
@@ -572,7 +574,7 @@ export default function App() {
                         Combine with a packaged product
                       </h4>
                       <p className="text-xs text-slate-600 font-semibold leading-relaxed">
-                        Do you have a specialized sauce, canned element, yogurt, or packaged seasoning mix you want to use? Scan its nutritional label first to receive direct customized proportion controls.
+                        Do you have a specialized sauce, canned element, yogurt, or packaged seasoning mix you want to use? Scan its nutritional label first to receive direct helpful nutrition tips.
                       </p>
                     </div>
                     <button
@@ -767,9 +769,9 @@ export default function App() {
                 {generatedMeals.length === 0 ? (
                   <div className="bg-white border-4 border-slate-900 rounded-3xl p-8 py-16 text-center" id="empty-recipes-fallback">
                     <Utensils className="w-16 h-16 text-slate-300 mx-auto mb-4 animate-bounce" />
-                    <h3 className="text-xl font-black text-slate-800 uppercase italic">No Recipes Synthesized</h3>
+                    <h3 className="text-xl font-black text-slate-800 uppercase italic">No meal ideas found</h3>
                     <p className="text-xs text-slate-500 max-w-sm mx-auto mt-2 font-semibold">
-                      We were unable to extract high quality recipe solutions. Try returning home and adding more primary ingredients like eggs, potatoes, beef, pasta to stimulate recipe paths.
+                      We could not generate strong meal ideas from the current list. Try adding a few main ingredients like eggs, rice, pasta, chicken, beans, vegetables, or potatoes.
                     </p>
                     <button
                       onClick={() => setActiveScreen("fridge-results")}
@@ -871,7 +873,7 @@ export default function App() {
                                   Combined Nutrient Advice
                                 </h5>
                                 <p className="text-xs text-amber-900 leading-relaxed font-semibold mt-1">
-                                  Integrate {scannedLabel.productName} inside this portion safely to preserve flavor while balancing daily sodium limits.
+                                  Integrate {scannedLabel.productName} inside this portion safely to preserve flavor while balancing salt/sodium. If this item is high in sodium, use a smaller amount or balance it with vegetables, plain protein, rice, or pasta.
                                 </p>
                               </div>
                             </div>

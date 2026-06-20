@@ -202,15 +202,15 @@ async function startServer() {
         console.log(`Integrating scanned nutrition label context: "${nutritionLabelContext.productName}"`);
       }
 
-      let prompt = `You are a culinary AI designed to suggest realistic, delightful, home-cooked meals.
-Based on this available list of pantry or fridge ingredients: ${ingredients.join(", ")}.
+      let prompt = `You are a culinary assistant designed to suggest simple, realistic, classmate-friendly home-cooked meals.
+Based on this available list of fridge, pantry, or ingredients: ${ingredients.join(", ")}.
 
-Suggest 3 distinct, realistic meal ideas.`;
+Suggest 3 simple, realistic meals based mostly on the user’s ingredients. Keep the directions beginner-friendly and avoid overly fancy recipes.`;
 
       if (nutritionLabelContext) {
         prompt += `
 
-We have also scanned a nutrition label for a food product/ingredient: "${nutritionLabelContext.productName}".
+We have also scanned a nutrition Facts label or ingredient list for a food product/ingredient: "${nutritionLabelContext.productName}".
 Nutritional status of scanned product:
 - Calories: ${nutritionLabelContext.calories}
 - Protein: ${nutritionLabelContext.protein}
@@ -219,8 +219,9 @@ Nutritional status of scanned product:
 - Assessments: ${nutritionLabelContext.assessments?.join(", ") || "None"}
 - Details: ${nutritionLabelContext.simpleExplanation}
 
-Provide positive culinary recommendations. Since the scanned item "${nutritionLabelContext.productName}" has these nutritional qualities, you MUST determine how to intelligently combine it with the fridge ingredients to produce stable, balanced dishes.
-Specifically fill out the "combinedAdvice" string field for each recommended recipe to guide the user on portion control or adding/adjusting ingredients (e.g., 'Since the scanned Marinara Sauce is high in sodium, we recommend using only half of the jar and adding plenty of fresh spinach and chicken to balance the salt content. Do not add extra table salt during cooking.').`;
+Provide positive cooking recommendations. Since the scanned item "${nutritionLabelContext.productName}" has these nutritional qualities, you MUST determine how to intelligently combine it with the ingredients to produce balanced meal ideas.
+Avoid medical-sounding phrases like "daily sodium limits". Instead, focus on helpful nutrition tips, saying things like: "If this item is high in sodium, use a smaller amount or balance it with vegetables, plain protein, rice, or pasta."
+Specifically fill out the "combinedAdvice" string field for each recommended meal to guide the user on using smaller portions or balancing/adjusting ingredients (e.g., 'Since the scanned marinara sauce is high in salt/sodium, you can use a smaller amount, or balance it out by adding fresh spinach, rice, pasta, or plain protein. Avoid adding extra salt during cooking.').`;
       } else {
         prompt += `
 Since no separate nutrition label was scanned, you do not need to provide combinedAdvice. You can leave custom advice empty or general.`;
