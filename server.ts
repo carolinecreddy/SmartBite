@@ -110,7 +110,7 @@ async function startServer() {
             },
           },
           {
-            text: "Analyze this nutrition facts label or list of ingredients. Read, extract, summarize the facts and explain them in simple, friendly, easy-to-understand language.",
+            text: "Analyze this nutrition facts label or list of ingredients. Read, extract, summarize the facts and explain them in simple, friendly, student-to-student easy-to-understand language. It must sound simple and helpful, not medical or overly technical. No medical jargon.",
           },
         ],
         config: {
@@ -148,7 +148,7 @@ async function startServer() {
               },
               simpleExplanation: {
                 type: Type.STRING,
-                description: "Explain the nutritional quality in simple, plain English (as if explaining to a friend). Max 3-4 sentences."
+                description: "Explain the nutritional quality in simple, friendly, plain English (as if explaining to a classmate). Max 3-4 sentences. Avoid medical terms or dry percentages. Focus on making it sound simple and helpful."
               },
               assessments: {
                 type: Type.ARRAY,

@@ -1,5 +1,5 @@
 {
-  "name": "Smart Pantry Plate",
+  "name": "SmartBite",
   "description": "An AI-powered mobile web app that identifies ingredients from fridge photos to generate meal ideas, explains nutrition labels in simple terms, and combines data for personalized food advice.",
   "requestFramePermissions": ["camera"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]

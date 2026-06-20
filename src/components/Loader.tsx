@@ -7,7 +7,7 @@ interface LoaderProps {
 
 const ingredientPhrases = [
   "Opening the camera lens...",
-  "Powering up Smart Pantry Plate AI...",
+  "Powering up SmartBite AI...",
   "Analyzing visible food shapes...",
   "Detecting ingredients and proteins...",
   "Sifting out condiments and veggies...",
@@ -18,7 +18,7 @@ const labelPhrases = [
   "Reading nutrition details...",
   "Decompressing microscopic numbers...",
   "Extracting protein, sodium, and sugars...",
-  "Translating complex chemistry talk into plain language...",
+  "Translating facts into plain language...",
   "Formulating active dietary suggestions...",
   "Almost ready...",
 ];

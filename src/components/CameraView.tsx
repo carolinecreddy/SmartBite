@@ -47,13 +47,7 @@ export default function CameraView({ onCapture, onCancel, title, guidanceText }:
     } catch (error: any) {
       console.error("Camera access error:", error);
       setHasPermission(false);
-      if (error.name === "NotAllowedError" || error.name === "PermissionDeniedError") {
-        setErrorMessage("Camera permission was denied. Please check your system settings or look for the camera icon in your address bar to grant access.");
-      } else if (error.name === "NotFoundError" || error.name === "DevicesNotFoundError") {
-        setErrorMessage("No cameras were found on this device.");
-      } else {
-        setErrorMessage(`Could not access the camera: ${error.message || "Unknown error"}. Feel free to upload an image instead.`);
-      }
+      setErrorMessage("Camera access did not work. Please allow camera permission, refresh the page, or try opening the link in Safari or Chrome. You can also upload a photo instead.");
     } finally {
       setIsInitializing(false);
     }
@@ -166,11 +160,11 @@ export default function CameraView({ onCapture, onCancel, title, guidanceText }:
                 <p className="text-sm font-medium text-slate-300">Requesting device camera access...</p>
               </div>
             ) : (
-              <div className="flex flex-col items-center" id="camera-error-prompt">
+              <div className="flex flex-col items-center max-w-md" id="camera-error-prompt">
                 <AlertCircle className="w-12 h-12 text-rose-400 mb-4" />
-                <h3 className="text-base font-semibold text-white mb-2">Camera Access Blocked or Not Available</h3>
-                <p className="text-xs text-slate-400 mb-6 leading-relaxed">
-                  {errorMessage || "Unable to acquire the front or back video feeds. You can still scan by picking a photo from your gallery."}
+                <h3 className="text-base font-bold text-white mb-2 uppercase tracking-wide">Camera Access Problem</h3>
+                <p className="text-sm text-slate-300 mb-6 leading-relaxed">
+                  {errorMessage || "Camera access did not work. Please allow camera permission, refresh the page, or try opening the link in Safari or Chrome. You can also upload a photo instead."}
                 </p>
 
                 {/* Upload Trigger Input */}

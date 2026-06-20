@@ -211,11 +211,11 @@ export default function App() {
       <header className="bg-white border-b-4 border-slate-900 px-6 py-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 relative z-10" id="app-header">
         <div className="flex flex-col cursor-pointer" onClick={handleReset}>
           <h1 className="text-3xl font-black tracking-tighter text-indigo-600 uppercase italic flex items-center gap-1.5 hover:opacity-90 transition-opacity">
-            <span>SMART PANTRY PLATE</span>
+            <span>SMARTBITE</span>
             <ChefHat className="w-7 h-7 text-emerald-500 -rotate-12 stroke-[2.5]" />
           </h1>
           <p className="text-[10px] uppercase tracking-widest font-extrabold text-slate-500">
-            AI-Powered Kitchen Intelligence
+            Scan your food. Understand labels. Make smarter meals.
           </p>
         </div>
         
@@ -264,19 +264,27 @@ export default function App() {
             <div className="text-left bg-gradient-to-tr from-slate-900 to-indigo-950 text-white p-6 sm:p-8 rounded-3xl border-4 border-slate-900 shadow-[8px_8px_0px_0px_rgba(79,70,229,1)] relative overflow-hidden" id="home-intro-card">
               <div className="relative z-10 max-w-xl">
                 <span className="px-3 py-1 bg-indigo-500/30 rounded-full text-[10px] font-black border border-indigo-400/40 uppercase tracking-wider text-indigo-300">
-                  Meal Helper & Nutrition Companion
+                  SmartBite Cooking Assistant
                 </span>
                 <h2 className="text-3xl sm:text-4xl font-black tracking-tight leading-none mt-3 mb-4">
-                  Turn random leftover ingredients into gourmet healthy plans.
+                  Scan your food. Understand labels. Make smarter meals.
                 </h2>
-                <p className="text-xs sm:text-sm text-indigo-100 leading-relaxed font-semibold">
-                  Take photos of what is inside your fridge or pantry to automatically detect raw ingredients, or photograph any package barcode/nutrition facts to decode salt, processing levels, and sugar chemistry simply.
+                <p className="text-sm text-indigo-100 leading-relaxed font-semibold">
+                  Take photos of what is inside your fridge or pantry to automatically detect raw ingredients, or scan nutrition facts on any food box to understand the details in simple, direct terms.
                 </p>
               </div>
               <div className="absolute -bottom-16 -right-16 w-48 h-48 bg-emerald-500/20 rounded-full blur-3xl pointer-events-none"></div>
               <div className="absolute top-10 right-10 opacity-10 pointer-events-none">
                 <Utensils className="w-40 h-40" />
               </div>
+            </div>
+
+            {/* Reviewer Testing Note */}
+            <div className="p-4 bg-amber-50 border-2 border-slate-900 rounded-2xl flex items-center gap-3 text-slate-800 text-xs font-semibold" id="reviewer-note">
+              <span className="p-1 px-2 bg-indigo-600 text-white text-[10px] font-black rounded uppercase tracking-wider">
+                Note
+              </span>
+              <p>Best tested on a phone in Safari or Chrome. Allow camera access when prompted.</p>
             </div>
 
             {/* ACTION GRID: Neo-Brutalist heavy border options */}
@@ -300,7 +308,7 @@ export default function App() {
                     SCAN FRIDGE /<br />PANTRY
                   </h3>
                   <p className="text-xs text-slate-500 font-semibold leading-relaxed">
-                    Instantly identify items with camera and draft recipe instructions, custom matches, and difficulty rates.
+                    Instantly identify items with your camera to find realistic recipes based mostly on what you already have.
                   </p>
                 </div>
               </button>
@@ -324,7 +332,7 @@ export default function App() {
                     SCAN NUTRITION<br />LABEL
                   </h3>
                   <p className="text-xs text-slate-500 font-semibold leading-relaxed">
-                    Snap a photo of nutrition facts or additives. We will translate saturated fats, sugars, and salt levels simply.
+                    Snap a photo of the nutrition label on any food package to get a simple, helpful breakdown of its key nutrients.
                   </p>
                 </div>
               </button>
@@ -385,7 +393,7 @@ export default function App() {
                       onClick={handleGenerateMeals}
                       className="flex-1 sm:flex-none bg-amber-400 text-slate-900 font-black text-xs px-4 py-2 rounded-xl border-2 border-slate-900 hover:bg-amber-350 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none transition-all"
                     >
-                      Cook Now ⚡
+                      Generate 3 Meal Ideas ⚡
                     </button>
                   </div>
                 </div>
@@ -432,10 +440,10 @@ export default function App() {
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b-2 border-slate-100 pb-4 mb-6">
                     <div>
                       <h2 className="text-3xl font-black tracking-tight text-slate-800 uppercase italic">
-                        Ingredients Detected & Added
+                        Ingredients Found
                       </h2>
-                      <p className="text-xs text-slate-500 font-semibold mt-1">
-                        Double-tap to edit, use the trash button to delete, or use the form field below to add additional pantry items.
+                      <p className="text-sm text-slate-500 font-semibold mt-1">
+                        Edit, delete, or manually add ingredients, then tap the button below to generate clear recipe ideas.
                       </p>
                     </div>
 
@@ -548,7 +556,7 @@ export default function App() {
                         className="w-full sm:w-auto px-8 py-4 bg-emerald-500 text-slate-950 font-black text-sm uppercase rounded-2xl border-4 border-slate-900 hover:bg-emerald-400 active:translate-y-0.5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none transition-all flex items-center justify-center gap-2"
                         id="btn-recipe-trigger-active"
                       >
-                        <span>Generate Recipe Options</span>
+                        <span>Generate 3 Meal Ideas</span>
                         <ChevronRight className="w-5 h-5 stroke-[3]" />
                       </button>
                     </div>
@@ -630,66 +638,72 @@ export default function App() {
                             );
                           })}
                         </div>
-                      </div>
-
-                      {/* Plain Language Interpretation Section */}
-                      <div className="p-5 bg-slate-900 text-white rounded-2xl border-2 border-slate-950 mb-6 relative overflow-hidden">
-                        <span className="absolute top-2 right-2 p-1.5 bg-indigo-500/10 rounded-full border border-indigo-400/20 text-indigo-400">
-                          <Sparkles className="w-4 h-4" />
-                        </span>
-                        <h4 className="text-sm font-black text-emerald-400 uppercase tracking-tight mb-2">
-                          Simplified Translation
-                        </h4>
-                        <p className="text-sm text-slate-200 leading-relaxed font-medium">
-                          {scannedLabel.simpleExplanation}
-                        </p>
-                      </div>
-
-                      {/* Nutrient breakdown table */}
-                      <div className="mb-6 bg-slate-50 border-2 border-slate-900 rounded-2xl p-4">
-                        <h4 className="text-xs font-black text-slate-500 uppercase tracking-tight border-b border-slate-200 pb-2 mb-3">
-                          Identified Nutritional Markers
-                        </h4>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-xs">
-                          <div className="bg-white p-3 rounded-xl border border-slate-200">
-                            <span className="block text-[10px] uppercase font-bold text-slate-400">Calories</span>
+                                            {/* Clear Nutritional Breakdown Sections */}
+                      <div className="space-y-4 mb-6">
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                          {/* Calories */}
+                          <div className="bg-white p-3 rounded-2xl border-2 border-slate-900 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                            <span className="block text-[10px] uppercase font-black text-slate-500 mb-0.5">Calories</span>
                             <span className="text-sm font-black text-slate-800">{scannedLabel.calories || "N/A"}</span>
                           </div>
-                          <div className="bg-white p-3 rounded-xl border border-slate-200">
-                            <span className="block text-[10px] uppercase font-bold text-slate-400">Protein</span>
+
+                          {/* Protein */}
+                          <div className="bg-white p-3 rounded-2xl border-2 border-slate-900 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                            <span className="block text-[10px] uppercase font-black text-slate-500 mb-0.5">Protein</span>
                             <span className="text-sm font-black text-indigo-700">{scannedLabel.protein || "N/A"}</span>
                           </div>
-                          <div className="bg-white p-3 rounded-xl border border-slate-200">
-                            <span className="block text-[10px] uppercase font-bold text-slate-400">Sodium</span>
-                            <span className="text-sm font-black text-rose-700">{scannedLabel.sodium || "N/A"}</span>
-                          </div>
-                          <div className="bg-white p-3 rounded-xl border border-slate-200">
-                            <span className="block text-[10px] uppercase font-bold text-slate-400">Sugar</span>
+
+                          {/* Sugar */}
+                          <div className="bg-white p-3 rounded-2xl border-2 border-slate-900 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                            <span className="block text-[10px] uppercase font-black text-slate-500 mb-0.5">Sugar</span>
                             <span className="text-sm font-black text-amber-700">{scannedLabel.sugar || "N/A"}</span>
                           </div>
-                          <div className="bg-white p-3 rounded-xl border border-slate-200">
-                            <span className="block text-[10px] uppercase font-bold text-slate-400">Saturated Fat</span>
+
+                          {/* Sodium */}
+                          <div className="bg-white p-3 rounded-2xl border-2 border-slate-900 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                            <span className="block text-[10px] uppercase font-black text-slate-500 mb-0.5">Sodium</span>
+                            <span className="text-sm font-black text-rose-700">{scannedLabel.sodium || "N/A"}</span>
+                          </div>
+
+                          {/* Saturated Fat */}
+                          <div className="bg-white p-3 rounded-2xl border-2 border-slate-900 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                            <span className="block text-[10px] uppercase font-black text-slate-500 mb-0.5">Saturated Fat</span>
                             <span className="text-sm font-black text-slate-700">{scannedLabel.saturatedFat || "N/A"}</span>
                           </div>
-                          <div className="bg-white p-3 rounded-xl border border-slate-200">
-                            <span className="block text-[10px] uppercase font-bold text-slate-400">Fiber</span>
+
+                          {/* Fiber */}
+                          <div className="bg-white p-3 rounded-2xl border-2 border-slate-900 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                            <span className="block text-[10px] uppercase font-black text-slate-500 mb-0.5">Fiber</span>
                             <span className="text-sm font-black text-emerald-700">{scannedLabel.fiber || "N/A"}</span>
                           </div>
                         </div>
-                      </div>
 
-                      {/* Practical Suggestion Box */}
-                      <div className="p-4 bg-emerald-50 border-2 border-emerald-400 rounded-2xl flex items-start gap-3">
-                        <Info className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
-                        <div>
-                          <h4 className="text-xs font-black text-emerald-950 uppercase tracking-tight">
-                            AI Dietitian Suggestion
+                        {/* Overall Summary */}
+                        <div className="p-5 bg-slate-900 text-white rounded-2xl border-2 border-slate-950 relative overflow-hidden">
+                          <span className="absolute top-2 right-2 p-1.5 bg-indigo-500/10 rounded-full border border-indigo-400/20 text-indigo-400">
+                            <Sparkles className="w-4 h-4" />
+                          </span>
+                          <h4 className="text-xs font-black text-emerald-400 uppercase tracking-widest mb-2">
+                            Overall Summary
                           </h4>
-                          <p className="text-xs text-emerald-900 font-semibold leading-relaxed mt-0.5">
-                            {scannedLabel.practicalSuggestion}
+                          <p className="text-xs sm:text-sm text-slate-200 leading-relaxed font-semibold">
+                            {scannedLabel.simpleExplanation}
                           </p>
                         </div>
-                      </div>
+
+                        {/* Practical Tip */}
+                        <div className="p-4 bg-emerald-50 border-2 border-emerald-400 rounded-2xl flex items-start gap-3">
+                          <Info className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
+                          <div>
+                            <h4 className="text-xs font-black text-emerald-950 uppercase tracking-widest">
+                              Practical Tip
+                            </h4>
+                            <p className="text-xs text-emerald-950 font-bold leading-relaxed mt-1">
+                              {scannedLabel.practicalSuggestion}
+                            </p>
+                          </div>
+                        </div>
+                      </div>  </div>
 
                       {/* Navigation buttons */}
                       <div className="mt-8 pt-6 border-t border-slate-100 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 justify-end">
@@ -705,7 +719,7 @@ export default function App() {
                             onClick={handleGenerateMeals}
                             className="px-6 py-4 bg-indigo-600 hover:bg-indigo-700 text-center text-white font-black text-sm uppercase rounded-xl border-4 border-slate-900 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 duration-100"
                           >
-                            Combine & Generate Meals ➔
+                            Generate 3 Meal Ideas ➔
                           </button>
                         ) : (
                           <button
@@ -741,11 +755,11 @@ export default function App() {
                         NUTRITION ADJUSTMENTS ENABLED
                       </span>
                       <h4 className="text-xs font-black text-slate-300 uppercase tracking-widest">
-                        Smart Pantry Plate Active Synthesis
+                        SmartBite Active Synthesis
                       </h4>
                     </div>
                     <p className="text-xs text-slate-350 leading-relaxed font-medium">
-                      Smart Pantry Plate combined details of your scanned ingredients with specific nutritional constraints found on the label of <span className="text-emerald-400 font-extrabold">"{scannedLabel.productName}"</span>. Adjustments are itemized beneath each dish configuration!
+                      SmartBite combined details of your scanned ingredients with specific nutritional constraints found on the label of <span className="text-emerald-400 font-extrabold">"{scannedLabel.productName}"</span>. Adjustments are itemized beneath each dish configuration!
                     </p>
                   </div>
                 )}
@@ -892,27 +906,22 @@ export default function App() {
 
       {/* FOOTER & PRIVACY NOTE */}
       <footer className="bg-white border-t-4 border-slate-900 px-6 py-6 mt-auto flex flex-col sm:flex-row items-center justify-between gap-4 relative z-10" id="app-footer-bar">
-        <div className="flex items-center gap-3">
-          <div className="bg-slate-100 p-2.5 rounded-2xl border-2 border-slate-900">
+        <div className="flex items-center gap-3 text-left">
+          <div className="bg-slate-100 p-2.5 rounded-2xl border-2 border-slate-900 flex-shrink-0 animate-pulse">
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-indigo-600">
               <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
               <path d="M7 11V7a5 5 0 0 1 10 0v4" />
             </svg>
           </div>
           <div>
-            <p className="text-[10px] font-black text-slate-800 uppercase tracking-wider leading-none">
-              SECURE WORKFLOW IN EFFECT
-            </p>
-            <p className="text-[10px] font-bold text-slate-500 leading-relaxed mt-0.5">
-              Photos are processed locally in real-time to analyze ingredients. No raw files are ever permanently logged or retained.
+            <p className="text-xs font-bold text-slate-700">
+              Privacy note: Photos are only used to generate your ingredient, nutrition, and meal analysis. They are not saved by this app.
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-4 text-[10px] font-black text-slate-400">
-          <span>VERSION 1.2.0</span>
-          <span>•</span>
-          <span>MOBILE BROWSER CERTIFIED</span>
+        <div className="flex items-center gap-4 text-xs font-black text-slate-500">
+          <span>SmartBite</span>
         </div>
       </footer>
     </div>
