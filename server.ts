@@ -23,6 +23,36 @@ const ai = new GoogleGenAI({
   },
 });
 
+function parseFlexibleJson(text: string): any {
+  let cleaned = text.trim();
+  // Strip code blocks if present
+  if (cleaned.startsWith("```json")) {
+    cleaned = cleaned.substring(7);
+  } else if (cleaned.startsWith("```")) {
+    cleaned = cleaned.substring(3);
+  }
+  if (cleaned.endsWith("```")) {
+    cleaned = cleaned.substring(0, cleaned.length - 3);
+  }
+  cleaned = cleaned.trim();
+
+  try {
+    return JSON.parse(cleaned);
+  } catch (err) {
+    const firstBrace = cleaned.indexOf("{");
+    const lastBrace = cleaned.lastIndexOf("}");
+    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+      const candidate = cleaned.substring(firstBrace, lastBrace + 1);
+      try {
+        return JSON.parse(candidate);
+      } catch (nestedErr) {
+        // Fall through
+      }
+    }
+    throw err;
+  }
+}
+
 async function startServer() {
   const app = express();
   const PORT = 3000;
@@ -54,7 +84,7 @@ async function startServer() {
             },
           },
           {
-            text: "List and identify all the visible ingredients, foods, condiments, veggies, meats, carbohydrates, and proteins in this fridge, pantry, or cooking workspace. Only return food items that are edible and cooking ingredients. Be practical.",
+            text: "List and identify all the visible ingredients, foods, condiments, veggies, meats, carbohydrates, and proteins in this fridge, pantry, or cooking workspace. Only return food items that are edible and cooking ingredients. Be practical. Return ONLY a valid JSON object matching the requested schema. Do not output any markdown formatting, markdown code blocks (such as ```json), or explanatory text.",
           },
         ],
         config: {
@@ -78,11 +108,28 @@ async function startServer() {
         throw new Error("No response content from Gemini.");
       }
 
-      const result = JSON.parse(responseText.trim());
+      const result = parseFlexibleJson(responseText);
       res.json(result);
     } catch (error: any) {
       console.error("Error in /api/analyze-fridge:", error);
-      res.status(500).json({ error: error.message || "Failed to analyze fridge image" });
+      const errMessage = String(error?.message || error || "");
+      const errStatus = error?.status;
+      if (
+        errStatus === 503 ||
+        errStatus === 429 ||
+        errMessage.includes("503") ||
+        errMessage.includes("UNAVAILABLE") ||
+        errMessage.includes("high demand") ||
+        errMessage.includes("rate limit") ||
+        errMessage.includes("RESOURCE_EXHAUSTED") ||
+        errMessage.includes("overloaded") ||
+        errMessage.includes("temporary") ||
+        errMessage.includes("quota")
+      ) {
+        res.status(503).json({ error: "UNAVAILABLE: " + errMessage });
+      } else {
+        res.status(500).json({ error: errMessage });
+      }
     }
   });
 
@@ -110,7 +157,7 @@ async function startServer() {
             },
           },
           {
-            text: "Analyze this nutrition facts label or list of ingredients. Read, extract, summarize the facts and explain them in simple, friendly, student-to-student easy-to-understand language. It must sound simple and helpful, not medical or overly technical. No medical jargon.",
+            text: "Analyze this nutrition facts label or list of ingredients. Read, extract, summarize the facts and explain them in simple, friendly, student-to-student easy-to-understand language. It must sound simple and helpful, not medical or overly technical. No medical jargon. Return ONLY a valid JSON object matching the requested schema. Do not output any markdown formatting, markdown code blocks (such as ```json), or explanatory text.",
           },
         ],
         config: {
@@ -181,11 +228,28 @@ async function startServer() {
         throw new Error("No response content from Gemini.");
       }
 
-      const result = JSON.parse(responseText.trim());
+      const result = parseFlexibleJson(responseText);
       res.json(result);
     } catch (error: any) {
       console.error("Error in /api/explain-label:", error);
-      res.status(500).json({ error: error.message || "Failed to analyze nutrition label" });
+      const errMessage = String(error?.message || error || "");
+      const errStatus = error?.status;
+      if (
+        errStatus === 503 ||
+        errStatus === 429 ||
+        errMessage.includes("503") ||
+        errMessage.includes("UNAVAILABLE") ||
+        errMessage.includes("high demand") ||
+        errMessage.includes("rate limit") ||
+        errMessage.includes("RESOURCE_EXHAUSTED") ||
+        errMessage.includes("overloaded") ||
+        errMessage.includes("temporary") ||
+        errMessage.includes("quota")
+      ) {
+        res.status(503).json({ error: "UNAVAILABLE: " + errMessage });
+      } else {
+        res.status(500).json({ error: errMessage });
+      }
     }
   });
 
@@ -229,7 +293,7 @@ Since no separate nutrition label was scanned, you do not need to provide combin
 
       const response = await ai.models.generateContent({
         model: "gemini-3.5-flash",
-        contents: prompt,
+        contents: prompt + "\n\nReturn ONLY a valid JSON object matching the requested schema. Do not output any markdown formatting, markdown code blocks (such as ```json), or explanatory text.",
         config: {
           responseMimeType: "application/json",
           responseSchema: {
@@ -282,11 +346,28 @@ Since no separate nutrition label was scanned, you do not need to provide combin
         throw new Error("No response content from Gemini.");
       }
 
-      const result = JSON.parse(responseText.trim());
+      const result = parseFlexibleJson(responseText);
       res.json(result);
     } catch (error: any) {
       console.error("Error in /api/generate-meals:", error);
-      res.status(500).json({ error: error.message || "Failed to generate meals" });
+      const errMessage = String(error?.message || error || "");
+      const errStatus = error?.status;
+      if (
+        errStatus === 503 ||
+        errStatus === 429 ||
+        errMessage.includes("503") ||
+        errMessage.includes("UNAVAILABLE") ||
+        errMessage.includes("high demand") ||
+        errMessage.includes("rate limit") ||
+        errMessage.includes("RESOURCE_EXHAUSTED") ||
+        errMessage.includes("overloaded") ||
+        errMessage.includes("temporary") ||
+        errMessage.includes("quota")
+      ) {
+        res.status(503).json({ error: "UNAVAILABLE: " + errMessage });
+      } else {
+        res.status(500).json({ error: errMessage });
+      }
     }
   });
 

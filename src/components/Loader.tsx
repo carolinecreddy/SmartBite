@@ -6,6 +6,7 @@ interface LoaderProps {
 }
 
 const ingredientPhrases = [
+  "Analyzing your photo...",
   "Opening the camera lens...",
   "Powering up SmartBite AI...",
   "Analyzing visible food shapes...",
@@ -15,6 +16,7 @@ const ingredientPhrases = [
 ];
 
 const labelPhrases = [
+  "Analyzing your photo...",
   "Reading nutrition details...",
   "Reading the label...",
   "Extracting protein, sodium, and sugars...",

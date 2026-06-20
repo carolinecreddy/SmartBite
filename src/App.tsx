@@ -34,6 +34,9 @@ export default function App() {
   const [loadingType, setLoadingType] = useState<"ingredients" | "label" | "meals">("ingredients");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   
+  // State to support retrying the same scan in case of failures
+  const [lastScan, setLastScan] = useState<{ type: "pantry" | "label"; image: string; mimeType: string } | null>(null);
+
   // Custom manual edit state for a single ingredient
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editingValue, setEditingValue] = useState<string>("");
@@ -47,6 +50,7 @@ export default function App() {
     setGeneratedMeals([]);
     setErrorMessage(null);
     setEditingIndex(null);
+    setLastScan(null);
   };
 
   // Switch to Scan Fridge Screen
@@ -67,6 +71,7 @@ export default function App() {
     setLoadingType("ingredients");
     setActiveScreen("fridge-results");
     setErrorMessage(null);
+    setLastScan({ type: "pantry", image: base64Image, mimeType });
     
     try {
       const response = await fetch("/api/analyze-fridge", {
@@ -83,18 +88,32 @@ export default function App() {
       }
 
       const data = await response.json();
-      if (data.ingredients && Array.isArray(data.ingredients)) {
+      if (data && data.ingredients && Array.isArray(data.ingredients)) {
         // Filter out duplicate or empty items and join with any existing
         const newItems = data.ingredients.filter(
           (item: string) => item.trim() !== "" && !ingredients.includes(item.trim())
         );
         setIngredients((prev) => [...prev, ...newItems]);
       } else {
-        throw new Error("No ingredients detected. Please try a different photo or add ingredients manually.");
+        throw new Error("malformed_response");
       }
     } catch (error: any) {
       console.error(error);
-      setErrorMessage(error.message || "Something went wrong while identifying your ingredients. Try again or add items manually.");
+      const errStr = String(error.message || error).toLowerCase();
+      if (
+        errStr.includes("503") ||
+        errStr.includes("unavailable") ||
+        errStr.includes("high demand") ||
+        errStr.includes("rate limit") ||
+        errStr.includes("resource_exhausted") ||
+        errStr.includes("overloaded") ||
+        errStr.includes("temporary") ||
+        errStr.includes("quota")
+      ) {
+        setErrorMessage("SmartBite is having trouble reaching the AI model right now. This is usually temporary. Please wait a moment and try scanning again.");
+      } else {
+        setErrorMessage("SmartBite could not read the scan results clearly. Please retake the photo in better lighting or upload a clearer image.");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -106,6 +125,7 @@ export default function App() {
     setLoadingType("label");
     setActiveScreen("label-results");
     setErrorMessage(null);
+    setLastScan({ type: "label", image: base64Image, mimeType });
 
     try {
       const response = await fetch("/api/explain-label", {
@@ -122,12 +142,40 @@ export default function App() {
       }
 
       const data: NutritionLabelAnalysis = await response.json();
-      setScannedLabel(data);
+      if (data && data.productName && data.simpleExplanation) {
+        setScannedLabel(data);
+      } else {
+        throw new Error("malformed_response");
+      }
     } catch (error: any) {
       console.error(error);
-      setErrorMessage(error.message || "Could not parse or read the nutrition label. Hold the camera steady and test under brighter light.");
+      const errStr = String(error.message || error).toLowerCase();
+      if (
+        errStr.includes("503") ||
+        errStr.includes("unavailable") ||
+        errStr.includes("high demand") ||
+        errStr.includes("rate limit") ||
+        errStr.includes("resource_exhausted") ||
+        errStr.includes("overloaded") ||
+        errStr.includes("temporary") ||
+        errStr.includes("quota")
+      ) {
+        setErrorMessage("SmartBite is having trouble reaching the AI model right now. This is usually temporary. Please wait a moment and try scanning again.");
+      } else {
+        setErrorMessage("SmartBite could not read the scan results clearly. Please retake the photo in better lighting or upload a clearer image.");
+      }
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleRetryScan = () => {
+    if (!lastScan) return;
+    setErrorMessage(null);
+    if (lastScan.type === "pantry") {
+      handleFridgeCapture(lastScan.image, lastScan.mimeType);
+    } else if (lastScan.type === "label") {
+      handleLabelCapture(lastScan.image, lastScan.mimeType);
     }
   };
 
@@ -241,17 +289,29 @@ export default function App() {
 
       {/* ERROR TOAST BAR */}
       {errorMessage && (
-        <div className="bg-rose-500 text-white px-6 py-4 border-b-4 border-slate-900 font-bold shadow-lg flex items-center justify-between gap-2 anime-fade-in" id="error-alert">
+        <div className="bg-rose-500 text-white px-6 py-4 border-b-4 border-slate-900 font-bold shadow-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-fade-in" id="error-alert">
           <div className="flex items-center gap-3">
             <AlertTriangle className="w-6 h-6 flex-shrink-0" />
             <p className="text-sm tracking-tight">{errorMessage}</p>
           </div>
-          <button 
-            onClick={() => setErrorMessage(null)} 
-            className="p-1 hover:bg-white/20 rounded-md transition"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+            {lastScan && (
+              <button
+                onClick={handleRetryScan}
+                className="px-3.5 py-1.5 bg-white text-slate-900 hover:bg-slate-100 text-xs font-black rounded-xl border-2 border-slate-900 transition flex items-center gap-1.5 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none"
+                id="btn-retry-scan"
+              >
+                <RotateCcw className="w-3.5 h-3.5 stroke-[3]" />
+                TRY AGAIN
+              </button>
+            )}
+            <button 
+              onClick={() => setErrorMessage(null)} 
+              className="p-1 hover:bg-white/20 rounded-md transition"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
       )}
 
