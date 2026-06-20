@@ -134,7 +134,7 @@ export default function App() {
   // Generate customized Meal suggestions
   const handleGenerateMeals = async () => {
     if (ingredients.length === 0) {
-      setErrorMessage("Please have at least 1 ingredient in your workspace to generate recipe matches.");
+      setErrorMessage("Please have at least 1 ingredient in your workspace to generate meal ideas.");
       return;
     }
 
@@ -157,14 +157,14 @@ export default function App() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to compile custom meal matches");
+        throw new Error(errorData.error || "Failed to compile custom meal ideas");
       }
 
       const data = await response.json();
       setGeneratedMeals(data.meals || []);
     } catch (error: any) {
       console.error(error);
-      setErrorMessage(error.message || "Could not generate creative recipes. Try modifying your ingredient list and try again.");
+      setErrorMessage(error.message || "Could not generate meal ideas. Try modifying your ingredient list and try again.");
     } finally {
       setIsLoading(false);
     }
@@ -267,7 +267,7 @@ export default function App() {
                   SmartBite Cooking Assistant
                 </span>
                 <h2 className="text-3xl sm:text-4xl font-black tracking-tight leading-none mt-3 mb-4">
-                  Scan your food. Understand labels. Make smarter meals.
+                  Plan Balanced Meals Instantly
                 </h2>
                 <p className="text-sm text-indigo-100 leading-relaxed font-semibold">
                   Take photos of what is inside your fridge or pantry to automatically detect raw ingredients, or scan nutrition facts on any food box to understand the details in simple, direct terms.
@@ -284,7 +284,7 @@ export default function App() {
               <span className="p-1 px-2 bg-indigo-600 text-white text-[10px] font-black rounded uppercase tracking-wider">
                 Note
               </span>
-              <p>Best tested on a phone in Safari or Chrome. Allow camera access when prompted.</p>
+              <p>Works best on a mobile browser with camera access enabled. If the camera does not open, refresh the page or try Safari on iPhone or Chrome on Android.</p>
             </div>
 
             {/* ACTION GRID: Neo-Brutalist heavy border options */}
@@ -392,7 +392,7 @@ export default function App() {
                     {ingredients.length > 0 && (
                       <button
                         onClick={handleGenerateMeals}
-                        className="flex-1 sm:flex-none bg-amber-400 text-slate-900 font-black text-xs px-4 py-2 rounded-xl border-2 border-slate-900 hover:bg-amber-350 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none transition-all"
+                        className="flex-1 sm:flex-none bg-amber-400 text-slate-900 font-black text-xs px-4 py-2 rounded-xl border-2 border-slate-900 hover:bg-amber-300 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none transition-all"
                       >
                         Generate 3 Meal Ideas ⚡
                       </button>
@@ -490,7 +490,7 @@ export default function App() {
                       {ingredients.map((ing, idx) => (
                         <div
                           key={idx}
-                          className="flex items-center justify-between p-3 bg-slate-100 hover:bg-slate-150 border-2 border-slate-900 rounded-2xl transition"
+                          className="flex items-center justify-between p-3 bg-slate-100 hover:bg-slate-200 border-2 border-slate-900 rounded-2xl transition"
                         >
                           {editingIndex === idx ? (
                             <div className="flex items-center gap-1.5 w-full">
@@ -603,10 +603,10 @@ export default function App() {
                   <>
                     {/* Visual brutalist card detailing label analysis */}
                     <div className="bg-white border-4 border-slate-900 rounded-3xl p-6 sm:p-8 shadow-[8px_8px_0px_0px_rgba(16,185,129,1)]">
-                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b-2 border-slate-150 pb-4 mb-6">
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b-2 border-slate-200 pb-4 mb-6">
                         <div>
                           <span className="text-[10px] uppercase font-black tracking-widest bg-emerald-100 text-emerald-800 border bg-emerald-50 border-emerald-300 px-2.5 py-1 rounded-full">
-                            Nutrition Decode Success
+                            Nutrition Label Results
                           </span>
                           <h2 className="text-3xl font-black tracking-tight text-slate-800 uppercase italic mt-1.5">
                             "{scannedLabel.productName}" Label Overview
@@ -757,11 +757,11 @@ export default function App() {
                         NUTRITION ADJUSTMENTS ENABLED
                       </span>
                       <h4 className="text-xs font-black text-slate-300 uppercase tracking-widest">
-                        SmartBite Active Synthesis
+                        Combined Meal Advice
                       </h4>
                     </div>
-                    <p className="text-xs text-slate-350 leading-relaxed font-medium">
-                      SmartBite combined details of your scanned ingredients with specific nutritional constraints found on the label of <span className="text-emerald-400 font-extrabold">"{scannedLabel.productName}"</span>. Adjustments are itemized beneath each dish configuration!
+                    <p className="text-xs text-slate-300 leading-relaxed font-medium">
+                      SmartBite combined your fridge, pantry, or ingredients with nutrition details found on the label of <span className="text-emerald-400 font-extrabold">"{scannedLabel.productName}"</span>. Adjustments are listed below each meal!
                     </p>
                   </div>
                 )}
@@ -833,7 +833,7 @@ export default function App() {
 
                         {/* Step by step directions */}
                         <div className="mb-6">
-                          <p className="text-xs font-black text-slate-450 uppercase tracking-wider mb-3">Cooking Instructions</p>
+                          <p className="text-xs font-black text-slate-500 uppercase tracking-wider mb-3">Cooking Instructions</p>
                           <ol className="space-y-3">
                             {meal.directions && meal.directions.map((step, sIdx) => (
                               <li key={sIdx} className="flex gap-3 text-sm">
@@ -917,7 +917,7 @@ export default function App() {
           </div>
           <div>
             <p className="text-xs font-bold text-slate-700">
-              Privacy note: Photos are only used to generate your ingredient, nutrition, and meal analysis. They are not saved by this app.
+              Privacy: Photos are analyzed for results, not saved.
             </p>
           </div>
         </div>

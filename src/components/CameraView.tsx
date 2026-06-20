@@ -125,7 +125,7 @@ export default function CameraView({ onCapture, onCancel, title, guidanceText }:
         </div>
         <button
           onClick={onCancel}
-          className="text-slate-400 hover:text-white text-sm font-medium transition-colors px-3 py-1.5 rounded-lg border border-slate-700 bg-slate-850 hover:bg-slate-800"
+          className="text-slate-400 hover:text-white text-sm font-medium transition-colors px-3 py-1.5 rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-800"
           id="btn-cancel-capture"
         >
           Cancel

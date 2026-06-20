@@ -16,16 +16,16 @@ const ingredientPhrases = [
 
 const labelPhrases = [
   "Reading nutrition details...",
-  "Decompressing microscopic numbers...",
+  "Reading the label...",
   "Extracting protein, sodium, and sugars...",
   "Translating facts into plain language...",
-  "Formulating active dietary suggestions...",
+  "Creating helpful tips...",
   "Almost ready...",
 ];
 
 const mealPhrases = [
   "Combing through pantry matches...",
-  "Consulting the AI Master Chef handbook...",
+  "Finding simple recipes...",
   "Balancing carbohydrates, proteins, and sodium...",
   "Drafting simple back-of-the-napkin steps...",
   "Testing difficulty ratings...",
@@ -65,7 +65,7 @@ export default function Loader({ type }: LoaderProps) {
           ? "Analyzing Fridge & Pantry"
           : type === "label"
           ? "Decoding Nutrition Label"
-          : "Crafting Culinary Creations"}
+          : "Generating Meal Ideas"}
       </h3>
       <p className="text-sm text-slate-500 dark:text-slate-400 mt-2 max-w-xs font-medium">
         {phrases[phraseIndex]}
