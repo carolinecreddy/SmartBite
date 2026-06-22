@@ -62,6 +62,12 @@ export default function Loader({ type }: LoaderProps) {
         </div>
       </div>
 
+      {(type === "ingredients" || type === "label") && (
+        <div className="mb-2 inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-black rounded-full uppercase tracking-wider animate-bounce">
+          Analyzing your photo...
+        </div>
+      )}
+
       <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">
         {type === "ingredients"
           ? "Analyzing Fridge & Pantry"

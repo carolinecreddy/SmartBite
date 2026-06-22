@@ -11,55 +11,180 @@ interface CameraViewProps {
 export default function CameraView({ onCapture, onCancel, title, guidanceText }: CameraViewProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [facingMode, setFacingMode] = useState<"user" | "environment">("environment");
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [errorMessage, setErrorMessage] = useState<string>("");
   const [isInitializing, setIsInitializing] = useState<boolean>(true);
+  const [cameraReady, setCameraReady] = useState<boolean>(false);
+
+  const cameraReadyRef = useRef<boolean>(false);
+  const retriedStartupRef = useRef<boolean>(false);
+  const activeSessionIdRef = useRef<number>(0);
+
+  // Keep ref up to date to avoid closure stale state in setTimeout
+  useEffect(() => {
+    cameraReadyRef.current = cameraReady;
+  }, [cameraReady]);
+
+  // Sync effect to guarantee the stream attaches and plays on the video element as soon as it renders and becomes available
+  useEffect(() => {
+    let active = true;
+    const video = videoRef.current;
+    if (video && stream && video.srcObject !== stream) {
+      console.log("Synchronizing camera stream to video player element");
+      video.srcObject = stream;
+      video.play()
+        .then(() => {
+          if (active) {
+            setCameraReady(true);
+          }
+        })
+        .catch((err) => {
+          console.warn("Failed programmatically playing stream, waiting for metadata:", err);
+        });
+    }
+    return () => {
+      active = false;
+    };
+  }); // run on every render/commit to stay perfectly synchronized
 
   // Initialize and request camera
-  const startCamera = async (currentMode: "user" | "environment") => {
+  const startCamera = async (currentMode: "user" | "environment", sessionId: number) => {
     setIsInitializing(true);
     setErrorMessage("");
+    setCameraReady(false);
 
-    // Stop existing stream tracks first
-    if (stream) {
-      stream.getTracks().forEach((track) => track.stop());
+    // Clear any existing stream completely before attempting a new start
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
     }
+    setStream(null);
 
-    try {
-      const constraints: MediaStreamConstraints = {
+    let mediaStream: MediaStream | null = null;
+    let lastError: any = null;
+
+    // Step-by-step camera fallback list, starting with the desired facingMode
+    const constraintOptions = [
+      // 1. High-quality with desired facingMode
+      {
         video: {
           facingMode: { ideal: currentMode },
-          width: { ideal: 1024 },
-          height: { ideal: 768 },
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
         },
         audio: false,
-      };
+      },
+      // 2. Desired facingMode with normal resolution to ensure basic devices match
+      {
+        video: {
+          facingMode: { ideal: currentMode },
+        },
+        audio: false,
+      },
+      // 3. Alternative facingMode ideal if desired fails (e.g. user on a rear-less laptop)
+      {
+        video: {
+          facingMode: { ideal: currentMode === "environment" ? "user" : "environment" },
+        },
+        audio: false,
+      },
+      // 4. Final raw fallback option if any specific facingMode constraints fail
+      {
+        video: true,
+        audio: false,
+      },
+    ];
 
-      const mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+    for (let i = 0; i < constraintOptions.length; i++) {
+      // If this call session has been canceled or replaced by a newer mounting, stop immediately
+      if (sessionId !== activeSessionIdRef.current) {
+        return;
+      }
+
+      try {
+        console.log(`[Session ${sessionId}] Attempting camera start option ${i + 1}`, constraintOptions[i]);
+        const testStream = await navigator.mediaDevices.getUserMedia(constraintOptions[i]);
+        
+        // Check once again after the async permission prompt of the browser
+        if (sessionId !== activeSessionIdRef.current) {
+          if (testStream) {
+            testStream.getTracks().forEach((track) => track.stop());
+          }
+          return;
+        }
+
+        mediaStream = testStream;
+        if (mediaStream) {
+          break; // successfully initialized the device stream
+        }
+      } catch (error: any) {
+        lastError = error;
+        console.warn(`[Session ${sessionId}] Option ${i + 1} rejected/failed:`, error.message || error);
+        
+        // Wait briefly before testing the next fallback constraints if still active
+        if (sessionId === activeSessionIdRef.current) {
+          await new Promise((resolve) => setTimeout(resolve, 300));
+        }
+      }
+    }
+
+    if (sessionId !== activeSessionIdRef.current) {
+      if (mediaStream) {
+        mediaStream.getTracks().forEach((track) => track.stop());
+      }
+      return;
+    }
+
+    if (mediaStream) {
+      streamRef.current = mediaStream;
       setStream(mediaStream);
       setHasPermission(true);
 
-      if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream;
+      const video = videoRef.current;
+      if (video) {
+        video.srcObject = mediaStream;
+        try {
+          await video.play();
+          setCameraReady(true);
+        } catch (playError) {
+          console.warn("Direct play trigger caught/prevented:", playError);
+        }
       }
-    } catch (error: any) {
-      console.error("Camera access error:", error);
+    } else {
+      console.error("Camera access failed all fallback trials", lastError);
       setHasPermission(false);
-      setErrorMessage("Camera access did not work. Please allow camera permission, refresh the page, or try opening the link in Safari or Chrome. You can also upload a photo instead.");
-    } finally {
-      setIsInitializing(false);
+      setErrorMessage("Camera did not start. Please allow camera access, refresh the page, or upload a photo instead.");
     }
+    setIsInitializing(false);
   };
 
   useEffect(() => {
-    startCamera(facingMode);
+    const sessionId = ++activeSessionIdRef.current;
+    
+    setCameraReady(false);
+    startCamera(facingMode, sessionId);
+
+    retriedStartupRef.current = false;
+    const timeoutId = setTimeout(() => {
+      // Check if we didn't start the camera stream after 4 seconds
+      if (sessionId === activeSessionIdRef.current && !cameraReadyRef.current && !retriedStartupRef.current && hasPermission !== false) {
+        console.log("No stream detected. Automatic retry is firing...", sessionId);
+        retriedStartupRef.current = true;
+        const retrySessionId = ++activeSessionIdRef.current;
+        startCamera(facingMode, retrySessionId);
+      }
+    }, 4000);
 
     return () => {
-      // Cleanup on unmount
-      if (stream) {
-        stream.getTracks().forEach((track) => track.stop());
+      clearTimeout(timeoutId);
+      // Cancel this session and clean up any ongoing device feeds
+      activeSessionIdRef.current = 0;
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
       }
     };
   }, [facingMode]);
@@ -85,10 +210,12 @@ export default function CameraView({ onCapture, onCancel, title, guidanceText }:
     const mimeType = "image/jpeg";
     const dataUrl = canvas.toDataURL(mimeType, 0.85); // Compress slightly for network speed
 
-    // Stop the camera stream
-    if (stream) {
-      stream.getTracks().forEach((t) => t.stop());
+    // Stop the camera stream immediately
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
     }
+    setStream(null);
 
     onCapture(dataUrl, mimeType);
   };
@@ -134,53 +261,56 @@ export default function CameraView({ onCapture, onCancel, title, guidanceText }:
 
       {/* Main Stream Area */}
       <div className="relative flex-1 flex flex-col items-center justify-center bg-black overflow-hidden min-h-[350px]" id="camera-stream-area">
-        {hasPermission === true && !errorMessage ? (
+        {hasPermission !== false && !errorMessage ? (
           <>
             <video
               ref={videoRef}
               autoPlay
               playsInline
               muted
-              className="w-full h-full max-h-[60vh] object-cover"
+              onCanPlay={() => setCameraReady(true)}
+              onLoadedMetadata={() => setCameraReady(true)}
+              className={`w-full h-full max-h-[60vh] object-cover ${cameraReady ? "block" : "hidden"}`}
               id="camera-video-player"
             />
-            {/* Visual focus frame */}
-            <div className="absolute inset-0 border-[3px] border-emerald-400/30 ring-[999px] ring-black/40 pointer-events-none rounded-sm m-6 flex items-center justify-center">
-              <div className="w-8 h-8 border-t-2 border-l-2 border-emerald-400 absolute top-0 left-0"></div>
-              <div className="w-8 h-8 border-t-2 border-r-2 border-emerald-400 absolute top-0 right-0"></div>
-              <div className="w-8 h-8 border-b-2 border-l-2 border-emerald-400 absolute bottom-0 left-0"></div>
-              <div className="w-8 h-8 border-b-2 border-r-2 border-emerald-400 absolute bottom-0 right-0"></div>
-            </div>
+            {cameraReady && (
+              /* Visual focus frame */
+              <div className="absolute inset-0 border-[3px] border-emerald-400/30 ring-[999px] ring-black/40 pointer-events-none rounded-sm m-6 flex items-center justify-center">
+                <div className="w-8 h-8 border-t-2 border-l-2 border-emerald-400 absolute top-0 left-0"></div>
+                <div className="w-8 h-8 border-t-2 border-r-2 border-emerald-400 absolute top-0 right-0"></div>
+                <div className="w-8 h-8 border-b-2 border-l-2 border-emerald-400 absolute bottom-0 left-0"></div>
+                <div className="w-8 h-8 border-b-2 border-r-2 border-emerald-400 absolute bottom-0 right-0"></div>
+              </div>
+            )}
+            {(!cameraReady || isInitializing) && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center bg-slate-950" id="camera-starting-loader">
+                <RefreshCw className="w-10 h-10 text-emerald-400 animate-spin mb-3" />
+                <p className="text-sm font-medium text-slate-300">Starting camera...</p>
+              </div>
+            )}
           </>
         ) : (
           <div className="flex flex-col items-center justify-center p-8 text-center max-w-sm" id="camera-fallback-screen">
-            {isInitializing ? (
-              <div className="flex flex-col items-center gap-3">
-                <RefreshCw className="w-10 h-10 text-emerald-400 animate-spin" />
-                <p className="text-sm font-medium text-slate-300">Requesting device camera access...</p>
-              </div>
-            ) : (
-              <div className="flex flex-col items-center max-w-md" id="camera-error-prompt">
-                <AlertCircle className="w-12 h-12 text-rose-400 mb-4" />
-                <h3 className="text-base font-bold text-white mb-2 uppercase tracking-wide">Camera Access Problem</h3>
-                <p className="text-sm text-slate-300 mb-6 leading-relaxed">
-                  {errorMessage || "Camera access did not work. Please allow camera permission, refresh the page, or try opening the link in Safari or Chrome. You can also upload a photo instead."}
-                </p>
+            <div className="flex flex-col items-center max-w-md" id="camera-error-prompt">
+              <AlertCircle className="w-12 h-12 text-rose-400 mb-4" />
+              <h3 className="text-base font-bold text-white mb-2 uppercase tracking-wide">Camera Access Problem</h3>
+              <p className="text-sm text-slate-300 mb-6 leading-relaxed">
+                {errorMessage || "Camera did not start. Please allow camera access, refresh the page, or upload a photo instead."}
+              </p>
 
-                {/* Upload Trigger Input */}
-                <label className="flex items-center justify-center gap-2 w-full py-3 px-4 bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white font-semibold rounded-xl cursor-pointer shadow-lg shadow-emerald-950/40 transition-colors">
-                  <Upload className="w-5 h-5" />
-                  <span>Choose Photo / Take Picture</span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    capture="environment"
-                    onChange={handleFileUpload}
-                    className="hidden"
-                  />
-                </label>
-              </div>
-            )}
+              {/* Upload Trigger Input */}
+              <label className="flex items-center justify-center gap-2 w-full py-3 px-4 bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white font-semibold rounded-xl cursor-pointer shadow-lg shadow-emerald-950/40 transition-colors">
+                <Upload className="w-5 h-5" />
+                <span>Choose Photo / Take Picture</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+              </label>
+            </div>
           </div>
         )}
       </div>

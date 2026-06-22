@@ -14,6 +14,7 @@ export interface NutritionLabelAnalysis {
 export interface Meal {
   name: string;
   ingredientsUsed: string[];
+  extraIngredientsAdded?: string[];
   directions: string[];
   difficulty: "Easy" | "Medium" | "Hard" | string;
   tags: string[];
@@ -22,6 +23,8 @@ export interface Meal {
 
 export interface MealResponse {
   meals: Meal[];
+  isFallbackMeals?: boolean;
+  fallbackMessage?: string;
 }
 
 export type ActiveScreen = "home" | "scan-fridge" | "scan-label" | "fridge-results" | "label-results" | "meal-ideas";

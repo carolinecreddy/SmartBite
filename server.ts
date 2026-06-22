@@ -157,7 +157,7 @@ async function startServer() {
             },
           },
           {
-            text: "Analyze this nutrition facts label or list of ingredients. Read, extract, summarize the facts and explain them in simple, friendly, student-to-student easy-to-understand language. It must sound simple and helpful, not medical or overly technical. No medical jargon. Return ONLY a valid JSON object matching the requested schema. Do not output any markdown formatting, markdown code blocks (such as ```json), or explanatory text.",
+             text: "Please analyze this nutrition facts label, product container, or list of ingredients. Be extremely flexible and helper-oriented:\n1. If the image looks like an ingredient list instead of a formal Nutrition Facts panel, treat that ingredient list as the primary label source. Identify what it is, extract and explain it under simpleExplanation, and give useful advice.\n2. If some or most of the values are missing, do NOT fail. Estimate or read what you CAN. For any values that are completely not present in the image (like calories, protein, sugar, sodium, saturated fat, or fiber), write exactly \"Not clearly visible\" instead of leaving them empty or throwing an error.\n3. If the label is blurry, still try your best to estimate the values or give a general explanation based on any visible words/numbers.\n4. Only if almost nothing useful can be read at all (e.g., completely black, solid color, totally blurry, or completely unrelated image with zero readable text or food references), write exactly 'Could not read scan results clearly' for the 'productName' and 'simpleExplanation' fields.\n\nReturn ONLY a valid JSON object matching the requested schema. Do not output any markdown formatting, markdown code blocks, or explanatory text.",
           },
         ],
         config: {
@@ -167,35 +167,35 @@ async function startServer() {
             properties: {
               productName: {
                 type: Type.STRING,
-                description: "Name of the product or brand (e.g., 'Tomato Sauce', 'Greek Yogurt', 'Spaghetti'). If unclear, list a descriptive guess."
+                description: "Name of the product or brand (e.g., 'Tomato Sauce', 'Greek Yogurt', 'Spaghetti'). If unclear or scanning an ingredient list/blurry logo, list a descriptive guess."
               },
               calories: {
                 type: Type.STRING,
-                description: "Calories per serving or container, if visible (e.g., '140 kcal per serving' or 'Not visible')."
+                description: "Calories per serving or container, if visible (e.g., '140 kcal per serving' or 'Not clearly visible')."
               },
               protein: {
                 type: Type.STRING,
-                description: "Protein amount, e.g. '8g' or '0g' or 'Not visible'."
+                description: "Protein amount, e.g. '8g' or '0g' or 'Not clearly visible'."
               },
               sugar: {
                 type: Type.STRING,
-                description: "Sugar content, specify if high or if added sugars are listed (e.g., '15g (includes 12g added sugars)')."
+                description: "Sugar content, specify if high or if added sugars are listed (e.g., '15g (includes 12g added sugars)' or 'Not clearly visible')."
               },
               sodium: {
                 type: Type.STRING,
-                description: "Sodium content (e.g., '340mg (15% DV)')."
+                description: "Sodium content (e.g., '340mg (15% DV)' or 'Not clearly visible')."
               },
               saturatedFat: {
                 type: Type.STRING,
-                description: "Saturated fat content (e.g., '1g (5% DV)')."
+                description: "Saturated fat content (e.g., '1g (5% DV)' or 'Not clearly visible')."
               },
               fiber: {
                 type: Type.STRING,
-                description: "Dietary fiber content (e.g., '3g' or '0g')."
+                description: "Dietary fiber content (e.g., '3g' or 'Not clearly visible')."
               },
               simpleExplanation: {
                 type: Type.STRING,
-                description: "Explain the nutritional quality in simple, friendly, plain English (as if explaining to a classmate). Max 3-4 sentences. Avoid medical terms or dry percentages. Focus on making it sound simple and helpful."
+                description: "Explain the nutritional quality or ingredient list in simple, friendly, plain English (as if explaining to a classmate). Max 3-4 sentences. Avoid medical terms or dry percentages. Focus on making it sound simple and helpful."
               },
               assessments: {
                 type: Type.ARRAY,
@@ -266,10 +266,15 @@ async function startServer() {
         console.log(`Integrating scanned nutrition label context: "${nutritionLabelContext.productName}"`);
       }
 
-      let prompt = `You are a culinary assistant designed to suggest simple, realistic, classmate-friendly home-cooked meals.
-Based on this available list of fridge, pantry, or ingredients: ${ingredients.join(", ")}.
+      let prompt = `You are a helper-oriented beginner-friendly culinary assistant designed to suggest simple, realistic, classmate-friendly home-cooked meals or snack-style options.
+Available list of fridge, pantry, or ingredients: ${ingredients.join(", ")}.
 
-Suggest 3 simple, realistic meals based mostly on the user’s ingredients. Keep the directions beginner-friendly and avoid overly fancy recipes.`;
+Suggest 3 simple, realistic meal ideas. You MUST follow these guidelines to maximize flexibility and reliability:
+1. Generate meal ideas from any reasonable ingredient list, even if it is very limited or only has 2-4 items. Do NOT require specific main ingredients like chicken, beef, rice, pasta, or eggs before suggesting recipes.
+2. If available ingredients are limited, focus on recommending quick snacks, light meals, micro-plates, or simple combinations.
+3. Allow common pantry basics (such as salt, pepper, cooking oil, butter, water, rice, pasta, bread, eggs, or seasonings/spices) to be assumed when needed, even if they aren't explicitly listed by the user.
+4. If there are not enough ingredients for full meals, suggest what 1-2 extra simple ingredients would make the meal work, and list those clearly in your directions or suggestions.
+5. Always generate 3 ideas. If 3 full recipes is not possible or realistic, suggest simpler food pairings, snacks, or beverage combos so you always return exactly 3 matching items. Keep cooking instructions beginner-friendly and short (3 to 6 steps maximum per meal).`;
 
       if (nutritionLabelContext) {
         prompt += `
@@ -299,6 +304,14 @@ Since no separate nutrition label was scanned, you do not need to provide combin
           responseSchema: {
             type: Type.OBJECT,
             properties: {
+              isFallbackMeals: {
+                type: Type.BOOLEAN,
+                description: "Set to true if no complete meals could be made using ONLY the user's list of ingredients, meaning you had to suggest recipes requiring 1-3 extra common additions."
+              },
+              fallbackMessage: {
+                type: Type.STRING,
+                description: "If isFallbackMeals is true, this MUST be exactly: 'No complete meals were found using only these ingredients, but here are options that use your ingredients plus a few common additions.' Otherwise, keep it empty or null."
+              },
               meals: {
                 type: Type.ARRAY,
                 items: {
@@ -312,6 +325,11 @@ Since no separate nutrition label was scanned, you do not need to provide combin
                       type: Type.ARRAY,
                       items: { type: Type.STRING },
                       description: "List of ingredients from the pantry list + optional label item used in this recipe"
+                    },
+                    extraIngredientsAdded: {
+                      type: Type.ARRAY,
+                      items: { type: Type.STRING },
+                      description: "Specify 1-3 additional common kitchen ingredients needed to complete this recipe, or empty list if none."
                     },
                     directions: {
                       type: Type.ARRAY,

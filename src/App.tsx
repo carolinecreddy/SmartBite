@@ -28,14 +28,15 @@ export default function App() {
   const [newIngredientInput, setNewIngredientInput] = useState<string>("");
   const [scannedLabel, setScannedLabel] = useState<NutritionLabelAnalysis | null>(null);
   const [generatedMeals, setGeneratedMeals] = useState<Meal[]>([]);
+  const [fallbackInfo, setFallbackInfo] = useState<{ isFallbackMeals: boolean; fallbackMessage: string } | null>(null);
   
   // Loading & error trackers
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [loadingType, setLoadingType] = useState<"ingredients" | "label" | "meals">("ingredients");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   
-  // State to support retrying the same scan in case of failures
-  const [lastScan, setLastScan] = useState<{ type: "pantry" | "label"; image: string; mimeType: string } | null>(null);
+  // State to support retrying the same scan/meals in case of failures
+  const [lastAction, setLastAction] = useState<{ type: "pantry" | "label" | "meals"; image?: string; mimeType?: string } | null>(null);
 
   // Custom manual edit state for a single ingredient
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
@@ -48,9 +49,10 @@ export default function App() {
     setNewIngredientInput("");
     setScannedLabel(null);
     setGeneratedMeals([]);
+    setFallbackInfo(null);
     setErrorMessage(null);
     setEditingIndex(null);
-    setLastScan(null);
+    setLastAction(null);
   };
 
   // Switch to Scan Fridge Screen
@@ -71,52 +73,69 @@ export default function App() {
     setLoadingType("ingredients");
     setActiveScreen("fridge-results");
     setErrorMessage(null);
-    setLastScan({ type: "pantry", image: base64Image, mimeType });
+    setLastAction({ type: "pantry", image: base64Image, mimeType });
     
-    try {
-      const response = await fetch("/api/analyze-fridge", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ image: base64Image, mimeType }),
-      });
+    let success = false;
+    let attempts = 0;
+    const maxFetchAttempts = 2; // Automatic single retry (total 2 attempts)
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to analyze pantry image");
-      }
+    while (attempts < maxFetchAttempts && !success) {
+      try {
+        if (attempts > 0) {
+          // Wait 1.2s before retrying
+          await new Promise((resolve) => setTimeout(resolve, 1200));
+        }
 
-      const data = await response.json();
-      if (data && data.ingredients && Array.isArray(data.ingredients)) {
+        const response = await fetch("/api/analyze-fridge", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ image: base64Image, mimeType }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || "Failed to analyze pantry image");
+        }
+
+        const data = await response.json();
+        const isFailure = !data || !data.ingredients || !Array.isArray(data.ingredients);
+
+        if (isFailure) {
+          throw new Error("malformed_response");
+        }
+
         // Filter out duplicate or empty items and join with any existing
         const newItems = data.ingredients.filter(
           (item: string) => item.trim() !== "" && !ingredients.includes(item.trim())
         );
         setIngredients((prev) => [...prev, ...newItems]);
-      } else {
-        throw new Error("malformed_response");
+        success = true;
+      } catch (error: any) {
+        attempts++;
+        if (attempts >= maxFetchAttempts) {
+          console.error("Pantry scan failed after all attempts:", error);
+          const errStr = String(error.message || error).toLowerCase();
+          if (
+            errStr.includes("503") ||
+            errStr.includes("unavailable") ||
+            errStr.includes("high demand") ||
+            errStr.includes("rate limit") ||
+            errStr.includes("resource_exhausted") ||
+            errStr.includes("overloaded") ||
+            errStr.includes("temporary") ||
+            errStr.includes("quota")
+          ) {
+            setErrorMessage("SmartBite is having trouble reaching the AI model right now. This is usually temporary. Please wait a moment and try scanning again.");
+          } else {
+            setErrorMessage("SmartBite could not read the scan results clearly. Please retake the photo in better lighting or upload a clearer image.");
+          }
+        }
       }
-    } catch (error: any) {
-      console.error(error);
-      const errStr = String(error.message || error).toLowerCase();
-      if (
-        errStr.includes("503") ||
-        errStr.includes("unavailable") ||
-        errStr.includes("high demand") ||
-        errStr.includes("rate limit") ||
-        errStr.includes("resource_exhausted") ||
-        errStr.includes("overloaded") ||
-        errStr.includes("temporary") ||
-        errStr.includes("quota")
-      ) {
-        setErrorMessage("SmartBite is having trouble reaching the AI model right now. This is usually temporary. Please wait a moment and try scanning again.");
-      } else {
-        setErrorMessage("SmartBite could not read the scan results clearly. Please retake the photo in better lighting or upload a clearer image.");
-      }
-    } finally {
-      setIsLoading(false);
     }
+
+    setIsLoading(false);
   };
 
   // Handle Photo capture of Nutrition facts Label
@@ -125,57 +144,93 @@ export default function App() {
     setLoadingType("label");
     setActiveScreen("label-results");
     setErrorMessage(null);
-    setLastScan({ type: "label", image: base64Image, mimeType });
+    setLastAction({ type: "label", image: base64Image, mimeType });
 
-    try {
-      const response = await fetch("/api/explain-label", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ image: base64Image, mimeType }),
-      });
+    let success = false;
+    let attempts = 0;
+    const maxFetchAttempts = 2; // Automatic single retry (total 2 attempts)
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to analyze nutrition label");
-      }
+    while (attempts < maxFetchAttempts && !success) {
+      try {
+        if (attempts > 0) {
+          // Wait 1.2s before retrying
+          await new Promise((resolve) => setTimeout(resolve, 1200));
+        }
 
-      const data: NutritionLabelAnalysis = await response.json();
-      if (data && data.productName && data.simpleExplanation) {
-        setScannedLabel(data);
-      } else {
-        throw new Error("malformed_response");
+        const response = await fetch("/api/explain-label", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ image: base64Image, mimeType }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || "Failed to analyze nutrition label");
+        }
+
+        const data: NutritionLabelAnalysis = await response.json();
+
+        const isFailure =
+          !data ||
+          !data.productName ||
+          data.productName.toLowerCase().includes("could not read") ||
+          data.simpleExplanation?.toLowerCase().includes("could not read");
+
+        if (isFailure) {
+          throw new Error("malformed_response");
+        }
+
+        const processedLabel: NutritionLabelAnalysis = {
+          productName: data.productName || "Unknown Product",
+          calories: data.calories || "Not clearly visible",
+          protein: data.protein || "Not clearly visible",
+          sugar: data.sugar || "Not clearly visible",
+          sodium: data.sodium || "Not clearly visible",
+          saturatedFat: data.saturatedFat || "Not clearly visible",
+          fiber: data.fiber || "Not clearly visible",
+          simpleExplanation: data.simpleExplanation || "Could not generate simple explanation",
+          assessments: data.assessments || [],
+          practicalSuggestion: data.practicalSuggestion || "No practical suggestions available"
+        };
+        setScannedLabel(processedLabel);
+        success = true;
+      } catch (error: any) {
+        attempts++;
+        if (attempts >= maxFetchAttempts) {
+          console.error("Label scan failed after all attempts:", error);
+          const errStr = String(error.message || error).toLowerCase();
+          if (
+            errStr.includes("503") ||
+            errStr.includes("unavailable") ||
+            errStr.includes("high demand") ||
+            errStr.includes("rate limit") ||
+            errStr.includes("resource_exhausted") ||
+            errStr.includes("overloaded") ||
+            errStr.includes("temporary") ||
+            errStr.includes("quota")
+          ) {
+            setErrorMessage("SmartBite is having trouble reaching the AI model right now. This is usually temporary. Please wait a moment and try scanning again.");
+          } else {
+            setErrorMessage("SmartBite could not read the scan results clearly. Please retake the photo in better lighting or upload a clearer image.");
+          }
+        }
       }
-    } catch (error: any) {
-      console.error(error);
-      const errStr = String(error.message || error).toLowerCase();
-      if (
-        errStr.includes("503") ||
-        errStr.includes("unavailable") ||
-        errStr.includes("high demand") ||
-        errStr.includes("rate limit") ||
-        errStr.includes("resource_exhausted") ||
-        errStr.includes("overloaded") ||
-        errStr.includes("temporary") ||
-        errStr.includes("quota")
-      ) {
-        setErrorMessage("SmartBite is having trouble reaching the AI model right now. This is usually temporary. Please wait a moment and try scanning again.");
-      } else {
-        setErrorMessage("SmartBite could not read the scan results clearly. Please retake the photo in better lighting or upload a clearer image.");
-      }
-    } finally {
-      setIsLoading(false);
     }
+
+    setIsLoading(false);
   };
 
   const handleRetryScan = () => {
-    if (!lastScan) return;
+    if (!lastAction) return;
     setErrorMessage(null);
-    if (lastScan.type === "pantry") {
-      handleFridgeCapture(lastScan.image, lastScan.mimeType);
-    } else if (lastScan.type === "label") {
-      handleLabelCapture(lastScan.image, lastScan.mimeType);
+    if (lastAction.type === "pantry" && lastAction.image) {
+      handleFridgeCapture(lastAction.image, lastAction.mimeType || "image/jpeg");
+    } else if (lastAction.type === "label" && lastAction.image) {
+      handleLabelCapture(lastAction.image, lastAction.mimeType || "image/jpeg");
+    } else if (lastAction.type === "meals") {
+      handleGenerateMeals();
     }
   };
 
@@ -190,32 +245,77 @@ export default function App() {
     setLoadingType("meals");
     setActiveScreen("meal-ideas");
     setErrorMessage(null);
+    setLastAction({ type: "meals" });
 
-    try {
-      const response = await fetch("/api/generate-meals", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          ingredients,
-          nutritionLabelContext: scannedLabel || undefined,
-        }),
-      });
+    let success = false;
+    let attempts = 0;
+    const maxFetchAttempts = 2; // Automatic single retry (total 2 attempts)
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to compile custom meal ideas");
+    while (attempts < maxFetchAttempts && !success) {
+      try {
+        if (attempts > 0) {
+          // Delay briefly before retrying
+          await new Promise((resolve) => setTimeout(resolve, 1200));
+        }
+
+        const response = await fetch("/api/generate-meals", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            ingredients,
+            nutritionLabelContext: scannedLabel || undefined,
+          }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || "Failed to compile custom meal ideas");
+        }
+
+        const data = await response.json();
+        if (data && data.meals && Array.isArray(data.meals) && data.meals.length > 0) {
+          setGeneratedMeals(data.meals);
+          
+          // Let's also store fallbacks if any are returned
+          if (data.isFallbackMeals && data.fallbackMessage) {
+            setFallbackInfo({
+              isFallbackMeals: true,
+              fallbackMessage: data.fallbackMessage
+            });
+          } else {
+            setFallbackInfo(null);
+          }
+          
+          success = true;
+        } else {
+          throw new Error("malformed_response");
+        }
+      } catch (error: any) {
+        attempts++;
+        if (attempts >= maxFetchAttempts) {
+          console.error("Meal generation failed after all attempts:", error);
+          const errStr = String(error.message || error).toLowerCase();
+          if (
+            errStr.includes("503") ||
+            errStr.includes("unavailable") ||
+            errStr.includes("high demand") ||
+            errStr.includes("rate limit") ||
+            errStr.includes("resource_exhausted") ||
+            errStr.includes("overloaded") ||
+            errStr.includes("temporary") ||
+            errStr.includes("quota")
+          ) {
+            setErrorMessage("SmartBite is having trouble reaching the AI model right now. This is usually temporary. Please wait a moment and try scanning again.");
+          } else {
+            setErrorMessage("SmartBite could not generate meal ideas. Please try modifying your ingredient list or adding standard items and try again.");
+          }
+        }
       }
-
-      const data = await response.json();
-      setGeneratedMeals(data.meals || []);
-    } catch (error: any) {
-      console.error(error);
-      setErrorMessage(error.message || "Could not generate meal ideas. Try modifying your ingredient list and try again.");
-    } finally {
-      setIsLoading(false);
     }
+
+    setIsLoading(false);
   };
 
   // Add individual custom ingredient manually
@@ -295,7 +395,7 @@ export default function App() {
             <p className="text-sm tracking-tight">{errorMessage}</p>
           </div>
           <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
-            {lastScan && (
+            {lastAction && (
               <button
                 onClick={handleRetryScan}
                 className="px-3.5 py-1.5 bg-white text-slate-900 hover:bg-slate-100 text-xs font-black rounded-xl border-2 border-slate-900 transition flex items-center gap-1.5 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none"
@@ -466,7 +566,7 @@ export default function App() {
 
         {/* SCREEN 2: SCAN FRIDGE CAMERA */}
         {activeScreen === "scan-fridge" && (
-          <div className="rounded-3xl border-4 border-slate-900 overflow-hidden" id="screen-camera-fridge">
+          <div key="fridge-camera-wrapper" className="rounded-3xl border-4 border-slate-900 overflow-hidden" id="screen-camera-fridge">
             <CameraView 
               title="Camera Workspace: Ingredients"
               guidanceText="Frame your fridge, pantry, countertop, or ingredients in good lighting."
@@ -478,7 +578,7 @@ export default function App() {
 
         {/* SCREEN 3: SCAN LABEL CAMERA */}
         {activeScreen === "scan-label" && (
-          <div className="rounded-3xl border-4 border-slate-900 overflow-hidden" id="screen-camera-label">
+          <div key="label-camera-wrapper" className="rounded-3xl border-4 border-slate-900 overflow-hidden" id="screen-camera-label">
             <CameraView 
               title="Camera Workspace: Label Scanner"
               guidanceText="Center the Nutrition Facts label or ingredient list clearly in the photo."
@@ -846,6 +946,20 @@ export default function App() {
                       Your 3 Personalized Meal Ideas
                     </h3>
 
+                    {fallbackInfo && fallbackInfo.isFallbackMeals && (
+                      <div className="bg-amber-50 border-4 border-amber-400 p-5 rounded-3xl flex items-start gap-3.5 mb-4 shadow-[4px_4px_0px_0px_rgba(251,191,36,1)]" id="meals-fallback-banner">
+                        <AlertTriangle className="w-6 h-6 text-amber-600 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <h4 className="text-sm font-black text-amber-950 uppercase tracking-tight">
+                            Ingredient Warning / Suggestions
+                          </h4>
+                          <p className="text-xs sm:text-sm text-amber-900 leading-relaxed font-bold mt-1">
+                            {fallbackInfo.fallbackMessage}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
                     {generatedMeals.map((meal, index) => (
                       <div
                         key={index}
@@ -879,16 +993,32 @@ export default function App() {
                           </div>
                         </div>
 
-                        {/* Ingredients used */}
-                        <div className="mb-6">
-                          <p className="text-xs font-black text-slate-400 uppercase tracking-wider mb-2">Ingredients Sourced</p>
-                          <div className="flex flex-wrap gap-1.5">
-                            {meal.ingredientsUsed && meal.ingredientsUsed.map((ing, iKey) => (
-                              <span key={iKey} className="text-xs font-bold bg-slate-100 text-slate-700 px-2.5 py-1 rounded-lg border border-slate-300">
-                                {ing}
-                              </span>
-                            ))}
+                        {/* Ingredients used & extra additions */}
+                        <div className="mb-6 space-y-4">
+                          <div>
+                            <p className="text-xs font-black text-slate-400 uppercase tracking-wider mb-2">Ingredients Sourced</p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {meal.ingredientsUsed && meal.ingredientsUsed.map((ing, iKey) => (
+                                <span key={iKey} className="text-xs font-bold bg-slate-100 text-slate-700 px-2.5 py-1 rounded-lg border border-slate-300">
+                                  {ing}
+                                </span>
+                              ))}
+                            </div>
                           </div>
+
+                          {meal.extraIngredientsAdded && meal.extraIngredientsAdded.length > 0 && (
+                            <div>
+                              <p className="text-xs font-black text-amber-600 uppercase tracking-wider mb-2">Suggested Pantry Additions</p>
+                              <div className="flex flex-wrap gap-1.5">
+                                {meal.extraIngredientsAdded.map((extra, eKey) => (
+                                  <span key={eKey} className="text-xs font-bold bg-amber-50 text-amber-800 px-2.5 py-1 rounded-lg border border-amber-300 flex items-center gap-1">
+                                    <Plus className="w-3 h-3 text-amber-500 stroke-[3]" />
+                                    {extra}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
 
                         {/* Step by step directions */}
